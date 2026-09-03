@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as RecommendationsRouteImport } from './routes/recommendations'
 import { Route as ResultsRouteImport } from './routes/results'
 import { Route as AssessmentCategoryRouteImport } from './routes/assessment.$category'
 
@@ -36,6 +37,11 @@ const ProfileRoute = ProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RecommendationsRoute = RecommendationsRouteImport.update({
+  id: '/recommendations',
+  path: '/recommendations',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResultsRoute = ResultsRouteImport.update({
   id: '/results',
   path: '/results',
@@ -52,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
   '/profile': typeof ProfileRoute
+  '/recommendations': typeof RecommendationsRoute
   '/results': typeof ResultsRoute
   '/assessment/$category': typeof AssessmentCategoryRoute
 }
@@ -60,6 +67,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
   '/profile': typeof ProfileRoute
+  '/recommendations': typeof RecommendationsRoute
   '/results': typeof ResultsRoute
   '/assessment/$category': typeof AssessmentCategoryRoute
 }
@@ -69,6 +77,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
   '/profile': typeof ProfileRoute
+  '/recommendations': typeof RecommendationsRoute
   '/results': typeof ResultsRoute
   '/assessment/$category': typeof AssessmentCategoryRoute
 }
@@ -79,6 +88,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/profile'
+    | '/recommendations'
     | '/results'
     | '/assessment/$category'
   fileRoutesByTo: FileRoutesByTo
@@ -87,6 +97,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/profile'
+    | '/recommendations'
     | '/results'
     | '/assessment/$category'
   id:
@@ -95,6 +106,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/profile'
+    | '/recommendations'
     | '/results'
     | '/assessment/$category'
   fileRoutesById: FileRoutesById
@@ -104,6 +116,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   DashboardRoute: typeof DashboardRoute
   ProfileRoute: typeof ProfileRoute
+  RecommendationsRoute: typeof RecommendationsRoute
   ResultsRoute: typeof ResultsRoute
   AssessmentCategoryRoute: typeof AssessmentCategoryRoute
 }
@@ -138,6 +151,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/recommendations': {
+      id: '/recommendations'
+      path: '/recommendations'
+      fullPath: '/recommendations'
+      preLoaderRoute: typeof RecommendationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/results': {
       id: '/results'
       path: '/results'
@@ -160,6 +180,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   DashboardRoute: DashboardRoute,
   ProfileRoute: ProfileRoute,
+  RecommendationsRoute: RecommendationsRoute,
   ResultsRoute: ResultsRoute,
   AssessmentCategoryRoute: AssessmentCategoryRoute,
 }
