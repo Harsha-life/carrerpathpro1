@@ -65,7 +65,7 @@ function ProfilePage() {
     setSaving(true);
     const { error } = await supabase.from("profiles").upsert({
       id: user.id,
-      email: user.email,
+      email: user.email ?? null,
       full_name: form.full_name,
       education: form.education,
       experience_years: Number(form.experience_years) || 0,
@@ -77,7 +77,10 @@ function ProfilePage() {
       bio: form.bio,
     });
     setSaving(false);
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success("Profile saved");
     qc.invalidateQueries({ queryKey: ["profile", user.id] });
   };

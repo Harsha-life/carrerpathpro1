@@ -83,7 +83,10 @@ function AssessmentPage() {
       traits,
     });
     setSubmitting(false);
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success("Assessment submitted");
     navigate({ to: "/results" });
   };
