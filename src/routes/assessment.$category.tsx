@@ -73,22 +73,15 @@ function AssessmentPage() {
   const submit = async () => {
     if (!user || list.length === 0) return;
     setSubmitting(true);
-    const { score, maxScore, traits } = scoreAttempt(list, answers);
-    const { error } = await supabase.from("assessment_attempts").insert({
-      user_id: user.id,
-      category,
-      score,
-      max_score: maxScore,
-      answers,
-      traits,
-    });
-    setSubmitting(false);
-    if (error) {
-      toast.error(error.message);
-      return;
+    try {
+      await runSubmit({ data: { category, answers } });
+      toast.success("Assessment submitted");
+      navigate({ to: "/results" });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not submit your assessment.");
+    } finally {
+      setSubmitting(false);
     }
-    toast.success("Assessment submitted");
-    navigate({ to: "/results" });
   };
 
   return (
