@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,10 +9,10 @@ import { AppShell, PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import { submitAttempt } from "@/lib/attempts.functions";
 import {
   CATEGORY_META,
   isCategory,
-  scoreAttempt,
   toOptions,
   type QuestionRow,
 } from "@/lib/assessments";
@@ -37,6 +38,7 @@ function AssessmentPage() {
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [index, setIndex] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const runSubmit = useServerFn(submitAttempt);
 
   const valid = isCategory(category);
 
@@ -46,12 +48,12 @@ function AssessmentPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("assessment_questions")
-        .select("id, category, prompt, options, correct_index, trait, sort_order")
+        .select("id, category, prompt, options, trait, sort_order")
         .eq("category", category)
         .eq("is_active", true)
         .order("sort_order");
       if (error) throw error;
-      return data as QuestionRow[];
+      return data as Omit<QuestionRow, "correct_index">[];
     },
   });
 
@@ -73,22 +75,15 @@ function AssessmentPage() {
   const submit = async () => {
     if (!user || list.length === 0) return;
     setSubmitting(true);
-    const { score, maxScore, traits } = scoreAttempt(list, answers);
-    const { error } = await supabase.from("assessment_attempts").insert({
-      user_id: user.id,
-      category,
-      score,
-      max_score: maxScore,
-      answers,
-      traits,
-    });
-    setSubmitting(false);
-    if (error) {
-      toast.error(error.message);
-      return;
+    try {
+      await runSubmit({ data: { category, answers } });
+      toast.success("Assessment submitted");
+      navigate({ to: "/results" });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not submit your assessment.");
+    } finally {
+      setSubmitting(false);
     }
-    toast.success("Assessment submitted");
-    navigate({ to: "/results" });
   };
 
   return (
