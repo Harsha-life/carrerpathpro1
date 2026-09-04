@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,10 +9,10 @@ import { AppShell, PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import { submitAttempt } from "@/lib/attempts.functions";
 import {
   CATEGORY_META,
   isCategory,
-  scoreAttempt,
   toOptions,
   type QuestionRow,
 } from "@/lib/assessments";
