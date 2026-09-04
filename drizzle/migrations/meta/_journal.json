@@ -8,6 +8,13 @@
       "when": 1788441201345,
       "tag": "0000_career_platform_core",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788525113849,
+      "tag": "0001_harden_functions_and_hide_answer_key",
+      "breakpoints": true
     }
   ]
 }
