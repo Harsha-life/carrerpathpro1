@@ -38,6 +38,7 @@ function AssessmentPage() {
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [index, setIndex] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const runSubmit = useServerFn(submitAttempt);
 
   const valid = isCategory(category);
 
@@ -47,12 +48,12 @@ function AssessmentPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("assessment_questions")
-        .select("id, category, prompt, options, correct_index, trait, sort_order")
+        .select("id, category, prompt, options, trait, sort_order")
         .eq("category", category)
         .eq("is_active", true)
         .order("sort_order");
       if (error) throw error;
-      return data as QuestionRow[];
+      return data as Omit<QuestionRow, "correct_index">[];
     },
   });
 
