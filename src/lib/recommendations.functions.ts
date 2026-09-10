@@ -3,9 +3,29 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const MODEL = "google/gemini-3.7-flash";
 
-type Career = { title: string; match: number; why: string; nextStep: string };
-type Course = { title: string; provider: string; level: string; why: string };
-type Job = { title: string; company: string; location: string; why: string };
+type Career = {
+  title: string;
+  match: number;
+  why: string;
+  nextStep: string;
+  medianSalaryUsd?: number | null;
+  outlook?: string | null;
+  url?: string | null;
+};
+type Course = {
+  title: string;
+  provider: string;
+  level: string;
+  why: string;
+  url?: string | null;
+};
+type Job = {
+  title: string;
+  company: string;
+  location: string;
+  why: string;
+  url?: string | null;
+};
 
 export type RecommendationPayload = {
   summary: string;
@@ -15,14 +35,22 @@ export type RecommendationPayload = {
   skillGaps: { skill: string; priority: string; action: string }[];
 };
 
-const SYSTEM_PROMPT = `You are a career guidance analyst. Using the learner profile and
-assessment results, produce grounded, specific guidance. Never invent scores.
+const SYSTEM_PROMPT = `You are a career guidance analyst. Using the learner profile,
+assessment results and the provided CATALOG of real careers, courses and open roles,
+produce grounded, specific guidance.
+
+HARD RULES:
+- Only recommend items that exist in the catalog. Never invent a career, course,
+  provider, company or job title that is not listed.
+- Reference each item by its exact "id" from the catalog.
+- Never invent scores or salaries; only the "match" number is your own judgement.
+
 Return ONLY valid JSON matching this shape:
 {
  "summary": string (2-3 sentences),
- "careers": [{"title":string,"match":number 0-100,"why":string,"nextStep":string}] (4 items),
- "courses": [{"title":string,"provider":string,"level":string,"why":string}] (4 items),
- "jobs": [{"title":string,"company":string,"location":string,"why":string}] (4 items),
+ "careers": [{"id":string,"match":number 0-100,"why":string,"nextStep":string}] (4 items),
+ "courses": [{"id":string,"why":string}] (4 items),
+ "jobs": [{"id":string,"why":string}] (4 items),
  "skillGaps": [{"skill":string,"priority":"high"|"medium"|"low","action":string}] (4 items)
 }`;
 
