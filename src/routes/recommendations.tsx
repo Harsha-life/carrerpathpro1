@@ -26,9 +26,29 @@ export const Route = createFileRoute("/recommendations")({
   component: RecommendationsPage,
 });
 
-type Career = { title: string; match: number; why: string; nextStep: string };
-type Course = { title: string; provider: string; level: string; why: string };
-type Job = { title: string; company: string; location: string; why: string };
+type Career = {
+  title: string;
+  match: number;
+  why: string;
+  nextStep: string;
+  medianSalaryUsd?: number | null;
+  outlook?: string | null;
+  url?: string | null;
+};
+type Course = { title: string; provider: string; level: string; why: string; url?: string | null };
+type Job = {
+  title: string;
+  company: string;
+  location: string;
+  why: string;
+  url?: string | null;
+};
+
+const usd = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 0,
+});
 type Gap = { skill: string; priority: string; action: string };
 
 function RecommendationsPage() {
