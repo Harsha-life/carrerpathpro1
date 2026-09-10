@@ -59,7 +59,13 @@ export const generateRecommendations = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
 
-    const [{ data: profile }, { data: attempts }] = await Promise.all([
+    const [
+      { data: profile },
+      { data: attempts },
+      { data: careerRows },
+      { data: courseRows },
+      { data: jobRows },
+    ] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
       supabase
         .from("assessment_attempts")
@@ -67,10 +73,25 @@ export const generateRecommendations = createServerFn({ method: "POST" })
         .eq("user_id", userId)
         .order("completed_at", { ascending: false })
         .limit(12),
+      supabase
+        .from("career_paths")
+        .select("slug, title, summary, core_skills, median_salary_usd, outlook, source_url")
+        .eq("is_active", true),
+      supabase
+        .from("catalog_courses")
+        .select("id, title, provider, level, skills, url, career_slug")
+        .eq("is_active", true),
+      supabase
+        .from("catalog_jobs")
+        .select("id, title, company, location, seniority, skills, url, career_slug")
+        .eq("is_active", true),
     ]);
 
     if (!attempts || attempts.length === 0) {
       throw new Error("Complete at least one assessment before generating recommendations.");
+    }
+    if (!careerRows?.length || !courseRows?.length || !jobRows?.length) {
+      throw new Error("The careers catalog is empty. Please try again later.");
     }
 
     const apiKey = process.env["LOVABLE_API_KEY"];
@@ -86,6 +107,33 @@ export const generateRecommendations = createServerFn({ method: "POST" })
         bio: profile?.bio ?? null,
       },
       assessments: attempts,
+      catalog: {
+        careers: careerRows.map((c) => ({
+          id: c.slug,
+          title: c.title,
+          summary: c.summary,
+          coreSkills: c.core_skills,
+          medianSalaryUsd: c.median_salary_usd,
+          outlook: c.outlook,
+        })),
+        courses: courseRows.map((c) => ({
+          id: c.id,
+          title: c.title,
+          provider: c.provider,
+          level: c.level,
+          skills: c.skills,
+          careerId: c.career_slug,
+        })),
+        jobs: jobRows.map((j) => ({
+          id: j.id,
+          title: j.title,
+          company: j.company,
+          location: j.location,
+          seniority: j.seniority,
+          skills: j.skills,
+          careerId: j.career_slug,
+        })),
+      },
     });
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
