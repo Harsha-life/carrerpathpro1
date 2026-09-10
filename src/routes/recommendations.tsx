@@ -138,8 +138,25 @@ function RecommendationsPage() {
                     <Badge variant="secondary">{c.match}% match</Badge>
                   </div>
                   <Progress value={c.match} className="mt-3 h-1.5" />
+                  {(c.medianSalaryUsd || c.outlook) && (
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      {c.medianSalaryUsd ? `Median pay ${usd.format(c.medianSalaryUsd)}/yr` : null}
+                      {c.medianSalaryUsd && c.outlook ? " · " : null}
+                      {c.outlook}
+                    </p>
+                  )}
                   <p className="mt-3 text-sm text-muted-foreground">{c.why}</p>
                   <p className="mt-2 text-xs text-primary">Next step: {c.nextStep}</p>
+                  {c.url && (
+                    <a
+                      href={c.url}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="mt-3 inline-block text-xs font-medium text-accent underline underline-offset-4"
+                    >
+                      Occupation data
+                    </a>
+                  )}
                 </article>
               ))}
             </div>
