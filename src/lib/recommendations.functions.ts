@@ -165,11 +165,71 @@ export const generateRecommendations = createServerFn({ method: "POST" })
       .replace(/```$/, "")
       .trim();
 
-    let parsed: RecommendationPayload;
+    type AiPick = { id?: string; match?: number; why?: string; nextStep?: string };
+    let parsed: {
+      summary?: string;
+      careers?: AiPick[];
+      courses?: AiPick[];
+      jobs?: AiPick[];
+      skillGaps?: { skill: string; priority: string; action: string }[];
+    };
     try {
-      parsed = JSON.parse(cleaned) as RecommendationPayload;
+      parsed = JSON.parse(cleaned) as typeof parsed;
     } catch {
       throw new Error("AI returned an unexpected response. Please try again.");
+    }
+
+    // Resolve every AI pick against the catalog so nothing invented reaches the user.
+    const careerBySlug = new Map(careerRows.map((c) => [c.slug, c]));
+    const courseById = new Map(courseRows.map((c) => [c.id, c]));
+    const jobById = new Map(jobRows.map((j) => [j.id, j]));
+
+    const careers: Career[] = (parsed.careers ?? []).flatMap((p) => {
+      const row = p.id ? careerBySlug.get(p.id) : undefined;
+      if (!row) return [];
+      return [
+        {
+          title: row.title,
+          match: Math.max(0, Math.min(100, Math.round(p.match ?? 0))),
+          why: p.why ?? row.summary,
+          nextStep: p.nextStep ?? "Pick a recommended course below and start this week.",
+          medianSalaryUsd: row.median_salary_usd,
+          outlook: row.outlook,
+          url: row.source_url,
+        },
+      ];
+    });
+
+    const courses: Course[] = (parsed.courses ?? []).flatMap((p) => {
+      const row = p.id ? courseById.get(p.id) : undefined;
+      if (!row) return [];
+      return [
+        {
+          title: row.title,
+          provider: row.provider,
+          level: row.level,
+          why: p.why ?? `Builds ${row.skills.slice(0, 3).join(", ")}.`,
+          url: row.url,
+        },
+      ];
+    });
+
+    const jobs: Job[] = (parsed.jobs ?? []).flatMap((p) => {
+      const row = p.id ? jobById.get(p.id) : undefined;
+      if (!row) return [];
+      return [
+        {
+          title: row.title,
+          company: row.company,
+          location: row.location,
+          why: p.why ?? `${row.seniority}-level role matching your strengths.`,
+          url: row.url,
+        },
+      ];
+    });
+
+    if (careers.length === 0) {
+      throw new Error("Could not match your results to the careers catalog. Please try again.");
     }
 
     const { data: saved, error } = await supabase
@@ -178,9 +238,9 @@ export const generateRecommendations = createServerFn({ method: "POST" })
         user_id: userId,
         model: MODEL,
         summary: parsed.summary ?? "",
-        careers: parsed.careers ?? [],
-        courses: parsed.courses ?? [],
-        jobs: parsed.jobs ?? [],
+        careers,
+        courses,
+        jobs,
         skill_gaps: parsed.skillGaps ?? [],
       })
       .select()
