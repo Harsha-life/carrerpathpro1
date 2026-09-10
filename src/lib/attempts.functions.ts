@@ -18,7 +18,7 @@ export const submitAttempt = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: questions, error: qErr } = await supabaseAdmin
       .from("assessment_questions")
-      .select("id, category, prompt, options, correct_index, trait, sort_order")
+      .select("id, category, prompt, options, trait, sort_order")
       .eq("category", data.category)
       .eq("is_active", true)
       .order("sort_order");
@@ -26,7 +26,18 @@ export const submitAttempt = createServerFn({ method: "POST" })
     if (qErr) throw new Error("Could not load assessment questions.");
     if (!questions || questions.length === 0) throw new Error("This assessment has no questions.");
 
-    const { score, maxScore, traits } = scoreAttempt(questions as QuestionRow[], data.answers);
+    const { data: keys } = await supabaseAdmin
+      .from("assessment_answer_keys")
+      .select("question_id, correct_index")
+      .in("question_id", questions.map((q) => q.id));
+
+    const keyByQuestion = new Map((keys ?? []).map((k) => [k.question_id, k.correct_index]));
+    const withKeys: QuestionRow[] = questions.map((q) => ({
+      ...q,
+      correct_index: keyByQuestion.get(q.id) ?? null,
+    }));
+
+    const { score, maxScore, traits } = scoreAttempt(withKeys, data.answers);
 
     const { error } = await supabase.from("assessment_attempts").insert({
       user_id: userId,
