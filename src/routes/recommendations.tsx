@@ -26,9 +26,29 @@ export const Route = createFileRoute("/recommendations")({
   component: RecommendationsPage,
 });
 
-type Career = { title: string; match: number; why: string; nextStep: string };
-type Course = { title: string; provider: string; level: string; why: string };
-type Job = { title: string; company: string; location: string; why: string };
+type Career = {
+  title: string;
+  match: number;
+  why: string;
+  nextStep: string;
+  medianSalaryUsd?: number | null;
+  outlook?: string | null;
+  url?: string | null;
+};
+type Course = { title: string; provider: string; level: string; why: string; url?: string | null };
+type Job = {
+  title: string;
+  company: string;
+  location: string;
+  why: string;
+  url?: string | null;
+};
+
+const usd = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 0,
+});
 type Gap = { skill: string; priority: string; action: string };
 
 function RecommendationsPage() {
@@ -118,8 +138,25 @@ function RecommendationsPage() {
                     <Badge variant="secondary">{c.match}% match</Badge>
                   </div>
                   <Progress value={c.match} className="mt-3 h-1.5" />
+                  {(c.medianSalaryUsd || c.outlook) && (
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      {c.medianSalaryUsd ? `Median pay ${usd.format(c.medianSalaryUsd)}/yr` : null}
+                      {c.medianSalaryUsd && c.outlook ? " · " : null}
+                      {c.outlook}
+                    </p>
+                  )}
                   <p className="mt-3 text-sm text-muted-foreground">{c.why}</p>
                   <p className="mt-2 text-xs text-primary">Next step: {c.nextStep}</p>
+                  {c.url && (
+                    <a
+                      href={c.url}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="mt-3 inline-block text-xs font-medium text-accent underline underline-offset-4"
+                    >
+                      Occupation data
+                    </a>
+                  )}
                 </article>
               ))}
             </div>

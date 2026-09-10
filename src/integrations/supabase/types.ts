@@ -14,6 +14,29 @@ export type Database = {
   }
   public: {
     Tables: {
+      assessment_answer_keys: {
+        Row: {
+          correct_index: number
+          question_id: string
+        }
+        Insert: {
+          correct_index: number
+          question_id: string
+        }
+        Update: {
+          correct_index?: number
+          question_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_answer_keys_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: true
+            referencedRelation: "assessment_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assessment_attempts: {
         Row: {
           answers: Json
@@ -80,6 +103,123 @@ export type Database = {
           prompt?: string
           sort_order?: number
           trait?: string | null
+        }
+        Relationships: []
+      }
+      career_paths: {
+        Row: {
+          core_skills: string[]
+          created_at: string
+          id: string
+          is_active: boolean
+          median_salary_usd: number | null
+          onet_code: string | null
+          outlook: string | null
+          slug: string
+          source_url: string | null
+          summary: string
+          title: string
+        }
+        Insert: {
+          core_skills?: string[]
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          median_salary_usd?: number | null
+          onet_code?: string | null
+          outlook?: string | null
+          slug: string
+          source_url?: string | null
+          summary: string
+          title: string
+        }
+        Update: {
+          core_skills?: string[]
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          median_salary_usd?: number | null
+          onet_code?: string | null
+          outlook?: string | null
+          slug?: string
+          source_url?: string | null
+          summary?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      catalog_courses: {
+        Row: {
+          career_slug: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          level: string
+          provider: string
+          skills: string[]
+          title: string
+          url: string
+        }
+        Insert: {
+          career_slug?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          level?: string
+          provider: string
+          skills?: string[]
+          title: string
+          url: string
+        }
+        Update: {
+          career_slug?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          level?: string
+          provider?: string
+          skills?: string[]
+          title?: string
+          url?: string
+        }
+        Relationships: []
+      }
+      catalog_jobs: {
+        Row: {
+          career_slug: string | null
+          company: string
+          created_at: string
+          id: string
+          is_active: boolean
+          location: string
+          seniority: string
+          skills: string[]
+          title: string
+          url: string | null
+        }
+        Insert: {
+          career_slug?: string | null
+          company: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          location: string
+          seniority?: string
+          skills?: string[]
+          title: string
+          url?: string | null
+        }
+        Update: {
+          career_slug?: string | null
+          company?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          location?: string
+          seniority?: string
+          skills?: string[]
+          title?: string
+          url?: string | null
         }
         Relationships: []
       }

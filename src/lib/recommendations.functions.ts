@@ -3,9 +3,29 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const MODEL = "google/gemini-3.7-flash";
 
-type Career = { title: string; match: number; why: string; nextStep: string };
-type Course = { title: string; provider: string; level: string; why: string };
-type Job = { title: string; company: string; location: string; why: string };
+type Career = {
+  title: string;
+  match: number;
+  why: string;
+  nextStep: string;
+  medianSalaryUsd?: number | null;
+  outlook?: string | null;
+  url?: string | null;
+};
+type Course = {
+  title: string;
+  provider: string;
+  level: string;
+  why: string;
+  url?: string | null;
+};
+type Job = {
+  title: string;
+  company: string;
+  location: string;
+  why: string;
+  url?: string | null;
+};
 
 export type RecommendationPayload = {
   summary: string;
@@ -15,14 +35,22 @@ export type RecommendationPayload = {
   skillGaps: { skill: string; priority: string; action: string }[];
 };
 
-const SYSTEM_PROMPT = `You are a career guidance analyst. Using the learner profile and
-assessment results, produce grounded, specific guidance. Never invent scores.
+const SYSTEM_PROMPT = `You are a career guidance analyst. Using the learner profile,
+assessment results and the provided CATALOG of real careers, courses and open roles,
+produce grounded, specific guidance.
+
+HARD RULES:
+- Only recommend items that exist in the catalog. Never invent a career, course,
+  provider, company or job title that is not listed.
+- Reference each item by its exact "id" from the catalog.
+- Never invent scores or salaries; only the "match" number is your own judgement.
+
 Return ONLY valid JSON matching this shape:
 {
  "summary": string (2-3 sentences),
- "careers": [{"title":string,"match":number 0-100,"why":string,"nextStep":string}] (4 items),
- "courses": [{"title":string,"provider":string,"level":string,"why":string}] (4 items),
- "jobs": [{"title":string,"company":string,"location":string,"why":string}] (4 items),
+ "careers": [{"id":string,"match":number 0-100,"why":string,"nextStep":string}] (4 items),
+ "courses": [{"id":string,"why":string}] (4 items),
+ "jobs": [{"id":string,"why":string}] (4 items),
  "skillGaps": [{"skill":string,"priority":"high"|"medium"|"low","action":string}] (4 items)
 }`;
 
@@ -31,7 +59,13 @@ export const generateRecommendations = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
 
-    const [{ data: profile }, { data: attempts }] = await Promise.all([
+    const [
+      { data: profile },
+      { data: attempts },
+      { data: careerRows },
+      { data: courseRows },
+      { data: jobRows },
+    ] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
       supabase
         .from("assessment_attempts")
@@ -39,10 +73,25 @@ export const generateRecommendations = createServerFn({ method: "POST" })
         .eq("user_id", userId)
         .order("completed_at", { ascending: false })
         .limit(12),
+      supabase
+        .from("career_paths")
+        .select("slug, title, summary, core_skills, median_salary_usd, outlook, source_url")
+        .eq("is_active", true),
+      supabase
+        .from("catalog_courses")
+        .select("id, title, provider, level, skills, url, career_slug")
+        .eq("is_active", true),
+      supabase
+        .from("catalog_jobs")
+        .select("id, title, company, location, seniority, skills, url, career_slug")
+        .eq("is_active", true),
     ]);
 
     if (!attempts || attempts.length === 0) {
       throw new Error("Complete at least one assessment before generating recommendations.");
+    }
+    if (!careerRows?.length || !courseRows?.length || !jobRows?.length) {
+      throw new Error("The careers catalog is empty. Please try again later.");
     }
 
     const apiKey = process.env["LOVABLE_API_KEY"];
@@ -58,6 +107,33 @@ export const generateRecommendations = createServerFn({ method: "POST" })
         bio: profile?.bio ?? null,
       },
       assessments: attempts,
+      catalog: {
+        careers: careerRows.map((c) => ({
+          id: c.slug,
+          title: c.title,
+          summary: c.summary,
+          coreSkills: c.core_skills,
+          medianSalaryUsd: c.median_salary_usd,
+          outlook: c.outlook,
+        })),
+        courses: courseRows.map((c) => ({
+          id: c.id,
+          title: c.title,
+          provider: c.provider,
+          level: c.level,
+          skills: c.skills,
+          careerId: c.career_slug,
+        })),
+        jobs: jobRows.map((j) => ({
+          id: j.id,
+          title: j.title,
+          company: j.company,
+          location: j.location,
+          seniority: j.seniority,
+          skills: j.skills,
+          careerId: j.career_slug,
+        })),
+      },
     });
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -89,11 +165,71 @@ export const generateRecommendations = createServerFn({ method: "POST" })
       .replace(/```$/, "")
       .trim();
 
-    let parsed: RecommendationPayload;
+    type AiPick = { id?: string; match?: number; why?: string; nextStep?: string };
+    let parsed: {
+      summary?: string;
+      careers?: AiPick[];
+      courses?: AiPick[];
+      jobs?: AiPick[];
+      skillGaps?: { skill: string; priority: string; action: string }[];
+    };
     try {
-      parsed = JSON.parse(cleaned) as RecommendationPayload;
+      parsed = JSON.parse(cleaned) as typeof parsed;
     } catch {
       throw new Error("AI returned an unexpected response. Please try again.");
+    }
+
+    // Resolve every AI pick against the catalog so nothing invented reaches the user.
+    const careerBySlug = new Map(careerRows.map((c) => [c.slug, c]));
+    const courseById = new Map(courseRows.map((c) => [c.id, c]));
+    const jobById = new Map(jobRows.map((j) => [j.id, j]));
+
+    const careers: Career[] = (parsed.careers ?? []).flatMap((p) => {
+      const row = p.id ? careerBySlug.get(p.id) : undefined;
+      if (!row) return [];
+      return [
+        {
+          title: row.title,
+          match: Math.max(0, Math.min(100, Math.round(p.match ?? 0))),
+          why: p.why ?? row.summary,
+          nextStep: p.nextStep ?? "Pick a recommended course below and start this week.",
+          medianSalaryUsd: row.median_salary_usd,
+          outlook: row.outlook,
+          url: row.source_url,
+        },
+      ];
+    });
+
+    const courses: Course[] = (parsed.courses ?? []).flatMap((p) => {
+      const row = p.id ? courseById.get(p.id) : undefined;
+      if (!row) return [];
+      return [
+        {
+          title: row.title,
+          provider: row.provider,
+          level: row.level,
+          why: p.why ?? `Builds ${row.skills.slice(0, 3).join(", ")}.`,
+          url: row.url,
+        },
+      ];
+    });
+
+    const jobs: Job[] = (parsed.jobs ?? []).flatMap((p) => {
+      const row = p.id ? jobById.get(p.id) : undefined;
+      if (!row) return [];
+      return [
+        {
+          title: row.title,
+          company: row.company,
+          location: row.location,
+          why: p.why ?? `${row.seniority}-level role matching your strengths.`,
+          url: row.url,
+        },
+      ];
+    });
+
+    if (careers.length === 0) {
+      throw new Error("Could not match your results to the careers catalog. Please try again.");
     }
 
     const { data: saved, error } = await supabase
@@ -102,9 +238,9 @@ export const generateRecommendations = createServerFn({ method: "POST" })
         user_id: userId,
         model: MODEL,
         summary: parsed.summary ?? "",
-        careers: parsed.careers ?? [],
-        courses: parsed.courses ?? [],
-        jobs: parsed.jobs ?? [],
+        careers,
+        courses,
+        jobs,
         skill_gaps: parsed.skillGaps ?? [],
       })
       .select()
