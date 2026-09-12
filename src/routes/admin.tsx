@@ -45,11 +45,19 @@ function AdminPage() {
         supabase.from("assessment_questions").select("id, category, is_active"),
         supabase.from("recommendations").select("id"),
       ]);
+      const [careers, courses, jobs] = await Promise.all([
+        supabase.from("career_paths").select("id", { count: "exact", head: true }),
+        supabase.from("catalog_courses").select("id", { count: "exact", head: true }),
+        supabase.from("catalog_jobs").select("id", { count: "exact", head: true }),
+      ]);
       return {
         profiles: profiles.data ?? [],
         attempts: attempts.data ?? [],
         questions: questions.data ?? [],
         reports: recs.data?.length ?? 0,
+        careers: careers.count ?? 0,
+        courses: courses.count ?? 0,
+        jobs: jobs.count ?? 0,
       };
     },
   });
