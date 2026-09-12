@@ -1,0 +1,4 @@
+- [ ] Add authenticated live job-posting search backed by real job-board results.
+- [ ] Replace recommendation job cards with current openings and source links.
+- [ ] Separate the admin workspace from the learner navigation and expand its overview.
+- [ ] Validate the preview, build diagnostics, and responsive presentation.
